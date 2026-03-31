@@ -1,74 +1,3 @@
-/**
- * API Service Layer
- * 
- * Centralized service for all backend communication.
- * Frontend and backend are in separate repositories.
- * 
- * ─────────────────────────────────────────────────────────────
- * BACKEND ENDPOINT REFERENCE
- * ─────────────────────────────────────────────────────────────
- * 
- * ## Cameras
- * GET    /api/v1/cameras                    → Camera[]
- * GET    /api/v1/cameras/:id                → Camera
- * GET    /api/v1/cameras/:id/status         → { status, fps, resolution }
- * 
- * ## Video Streams
- * GET    /api/v1/streams/genetec/:cameraId/hls   → HLS manifest URL (m3u8)
- * GET    /api/v1/streams/mobile/:cameraId/hls    → HLS manifest URL (m3u8)
- * POST   /api/v1/streams/mobile/register         → { cameraId, signalingToken }
- *   Body: { deviceId: string, deviceName: string, location: { lat, lng } }
- * 
- * ## Alerts
- * GET    /api/v1/alerts                     → Alert[] (active alerts)
- *   Query: ?status=pending&limit=50
- * GET    /api/v1/alerts/:id                 → Alert
- * PUT    /api/v1/alerts/:id/validate        → Alert (updated)
- *   Body: { isTrue: boolean, validatedBy: string }
- * 
- * ## Historical Records
- * GET    /api/v1/records                    → { data: HistoricalRecord[], total: number, page: number }
- *   Query: ?search=term&crimeType=robbery&status=true_positive
- *          &dateFrom=ISO&dateTo=ISO&page=1&limit=20
- * GET    /api/v1/records/:id                → HistoricalRecord
- * GET    /api/v1/records/:id/clip           → video/mp4 stream
- * GET    /api/v1/records/export             → application/xlsx (filtered records)
- *   Query: same as GET /records
- * GET    /api/v1/records/:id/export         → application/zip (clip.mp4 + data.xlsx)
- * 
- * ## System Metrics
- * GET    /api/v1/metrics                    → SystemMetrics
- * 
- * ## WebSocket Events (ws://host/ws)
- * - alert:new        → New alert detected
- * - alert:tracking   → Multi-camera tracking update
- * - camera:status    → Camera status change
- * - metrics:update   → System metrics update
- * 
- * ─────────────────────────────────────────────────────────────
- * AUTHENTICATION
- * ─────────────────────────────────────────────────────────────
- * All endpoints require Bearer token in Authorization header.
- * Token is obtained via POST /api/v1/auth/login
- * 
- * ─────────────────────────────────────────────────────────────
- * GENETEC INTEGRATION (Backend-side)
- * ─────────────────────────────────────────────────────────────
- * Backend connects to Genetec Security Center via:
- * - Genetec Web SDK / REST API
- * - Server: GENETEC_SERVER_URL (e.g. https://genetec-server:4590)
- * - Auth: GENETEC_USERNAME + GENETEC_PASSWORD or GENETEC_API_KEY
- * - Backend transcodes RTSP → HLS for browser consumption
- * 
- * ─────────────────────────────────────────────────────────────
- * MOBILE CAMERA INTEGRATION (Backend-side)
- * ─────────────────────────────────────────────────────────────
- * Mobile devices connect via:
- * - WebRTC: Signaling server at ws://host/ws/signaling
- * - RTMP: rtmp://host/live/{streamKey}
- * - Backend transcodes to HLS for dashboard consumption
- */
-
 import { API_CONFIG } from '@/config/api';
 import type { Camera, Alert, SystemMetrics, HistoricalRecord } from '@/types/surveillance';
 
@@ -120,6 +49,10 @@ class ApiClient {
     return this.request<T>(path, { method: 'POST', body: JSON.stringify(body) });
   }
 
+  async patch<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
+  }
+
   async put<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>(path, { method: 'PUT', body: JSON.stringify(body) });
   }
@@ -147,7 +80,74 @@ export class ApiError extends Error {
 
 export const apiClient = new ApiClient(API_CONFIG.baseUrl);
 
-// ── Service Functions ────────────────────────────────────────
+// ── Service Interfaces ───────────────────────────────────
+
+export interface AlertsListQuery {
+  camera_id?: string;
+  crime_type?: string[];
+  severity?: string[];
+  validation?: string[];
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface AlertsListResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  items: Alert[];
+}
+
+export interface RecordsListQuery {
+  camera_id?: string;
+  crime_type?: string[];
+  severity?: string[];
+  validation?: string[];
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface RecordsListResponse {
+  data: HistoricalRecord[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface StreamResponse {
+  url: string;
+  type: string;
+  camera_id: string;
+  status: string;
+}
+
+export interface MobileCameraRegisterResponse {
+  camera_id: string;
+  signaling_token: string;
+  signaling_server: string;
+  rtmp_url?: string;
+}
+
+export interface SystemMetricsResponse {
+  total_cameras: number;
+  online_cameras: number;
+  offline_cameras: number;
+  warning_cameras: number;
+  alerts_today: number;
+  avg_latency_ms: number;
+  avg_fps: number;
+  model_accuracy: number;
+  uptime_pct: number;
+  processing_fps: number;
+}
+
+// ── Service Functions ────────────────────────────────────
 
 export const cameraService = {
   getAll: () => apiClient.get<Camera[]>('/cameras'),
@@ -155,64 +155,88 @@ export const cameraService = {
 };
 
 export const alertService = {
-  getActive: (limit = 50) => apiClient.get<Alert[]>('/alerts', { status: 'pending', limit: String(limit) }),
+  getActive: () => apiClient.get<Alert[]>('/alerts/active'),
   getById: (id: string) => apiClient.get<Alert>(`/alerts/${id}`),
-  validate: (id: string, isTrue: boolean, validatedBy: string) =>
-    apiClient.put<Alert>(`/alerts/${id}/validate`, { isTrue, validatedBy }),
+  list: (query: AlertsListQuery = {}) => {
+    const params: Record<string, string> = {};
+    if (query.camera_id) params.camera_id = query.camera_id;
+    if (query.crime_type?.length) query.crime_type.forEach(ct => {
+      if (!params.crime_type) params.crime_type = ct;
+      else params.crime_type += `,${ct}`;
+    });
+    if (query.severity?.length) query.severity.forEach(s => {
+      if (!params.severity) params.severity = s;
+      else params.severity += `,${s}`;
+    });
+    if (query.validation?.length) query.validation.forEach(v => {
+      if (!params.validation) params.validation = v;
+      else params.validation += `,${v}`;
+    });
+    if (query.date_from) params.date_from = query.date_from;
+    if (query.date_to) params.date_to = query.date_to;
+    if (query.search) params.search = query.search;
+    if (query.page) params.page = String(query.page);
+    if (query.page_size) params.page_size = String(query.page_size);
+    return apiClient.get<AlertsListResponse>('/alerts', params);
+  },
+  validate: (id: string, status: 'confirmed' | 'false_positive') =>
+    apiClient.patch<Alert>(`/alerts/${id}/validate`, { status }),
 };
 
-export interface RecordsQuery {
-  search?: string;
-  crimeType?: string;
-  status?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  totalPages: number;
-}
-
 export const recordService = {
-  getAll: (query: RecordsQuery = {}) => {
+  getAll: (query: RecordsListQuery = {}) => {
     const params: Record<string, string> = {};
+    if (query.camera_id) params.camera_id = query.camera_id;
+    if (query.crime_type?.length) query.crime_type.forEach(ct => {
+      if (!params.crime_type) params.crime_type = ct;
+      else params.crime_type += `,${ct}`;
+    });
+    if (query.severity?.length) query.severity.forEach(s => {
+      if (!params.severity) params.severity = s;
+      else params.severity += `,${s}`;
+    });
+    if (query.validation?.length) query.validation.forEach(v => {
+      if (!params.validation) params.validation = v;
+      else params.validation += `,${v}`;
+    });
+    if (query.date_from) params.date_from = query.date_from;
+    if (query.date_to) params.date_to = query.date_to;
     if (query.search) params.search = query.search;
-    if (query.crimeType && query.crimeType !== 'all') params.crimeType = query.crimeType;
-    if (query.status && query.status !== 'all') params.status = query.status;
-    if (query.dateFrom) params.dateFrom = query.dateFrom;
-    if (query.dateTo) params.dateTo = query.dateTo;
     if (query.page) params.page = String(query.page);
-    if (query.limit) params.limit = String(query.limit);
-    return apiClient.get<PaginatedResponse<HistoricalRecord>>('/records', params);
+    if (query.page_size) params.page_size = String(query.page_size);
+    return apiClient.get<RecordsListResponse>('/records', params);
   },
   getById: (id: string) => apiClient.get<HistoricalRecord>(`/records/${id}`),
   getClipUrl: (id: string) => `${API_CONFIG.baseUrl}/records/${id}/clip`,
-  exportAll: (query: RecordsQuery = {}) => {
-    const params: Record<string, string> = {};
-    if (query.search) params.search = query.search;
-    if (query.crimeType && query.crimeType !== 'all') params.crimeType = query.crimeType;
-    if (query.status && query.status !== 'all') params.status = query.status;
-    if (query.dateFrom) params.dateFrom = query.dateFrom;
-    if (query.dateTo) params.dateTo = query.dateTo;
-    return apiClient.getBlob('/records/export', params);
-  },
-  exportSingle: (id: string) => apiClient.getBlob(`/records/${id}/export`),
+  downloadClip: (id: string) => apiClient.getBlob(`/records/${id}/clip`),
 };
 
 export const metricsService = {
-  getCurrent: () => apiClient.get<SystemMetrics>('/metrics'),
+  getSystem: () => apiClient.get<SystemMetricsResponse>('/metrics/system'),
+  getCameras: () => apiClient.get('/metrics/cameras'),
 };
 
 export const streamService = {
-  getGenetecStreamUrl: (cameraId: string) => `${API_CONFIG.baseUrl}/streams/genetec/${cameraId}/hls`,
-  getMobileStreamUrl: (cameraId: string) => `${API_CONFIG.baseUrl}/streams/mobile/${cameraId}/hls`,
-  registerMobileCamera: (deviceId: string, deviceName: string, location: { lat: number; lng: number }) =>
-    apiClient.post<{ cameraId: string; signalingToken: string }>('/streams/mobile/register', {
-      deviceId, deviceName, location,
+  getHlsStream: (cameraId: string) => 
+    apiClient.get<StreamResponse>(`/streams/${cameraId}/hls`),
+  getHlsUrl: (cameraId: string) => `${API_CONFIG.baseUrl}/streams/${cameraId}/hls`,
+  registerMobileCamera: (deviceId: string, deviceName: string, location?: { lat: number; lng: number }) =>
+    apiClient.post<MobileCameraRegisterResponse>('/streams/mobile/register', {
+      device_id: deviceId,
+      device_name: deviceName,
+      location: location || { lat: 0, lng: 0 },
     }),
+};
+
+export const exportService = {
+  exportAlertsExcel: (query: AlertsListQuery = {}) => {
+    const params: Record<string, string> = {};
+    if (query.camera_id) params.camera_id = query.camera_id;
+    if (query.date_from) params.date_from = query.date_from;
+    if (query.date_to) params.date_to = query.date_to;
+    if (query.search) params.search = query.search;
+    return apiClient.getBlob('/export/alerts/excel', params);
+  },
+  exportAlertZip: (alertId: string) => 
+    apiClient.getBlob(`/export/alerts/${alertId}/zip`),
 };

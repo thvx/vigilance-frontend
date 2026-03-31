@@ -54,14 +54,14 @@ export function RecordDetailModal({ record, isOpen, onClose, onExport, clipUrl }
 
           {/* Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <DetailItem icon={Camera} label="Cámara" value={record.cameraName} />
+            <DetailItem icon={Camera} label="Cámara" value={record.camera_name} />
             <DetailItem icon={MapPin} label="Ubicación" value={record.location} />
             <DetailItem
               icon={Clock}
               label="Fecha/Hora"
               value={format(record.timestamp, "dd/MM/yyyy HH:mm:ss", { locale: es })}
             />
-            <DetailItem icon={FileText} label="Tipo" value={CRIME_TYPE_LABELS[record.crimeType]} />
+            <DetailItem icon={FileText} label="Tipo" value={CRIME_TYPE_LABELS[record.crime_type]} />
           </div>
 
           {/* Metadata */}
@@ -71,32 +71,32 @@ export function RecordDetailModal({ record, isOpen, onClose, onExport, clipUrl }
                 <p className="text-[10px] text-muted-foreground uppercase">Confianza</p>
                 <p className={cn(
                   'text-sm font-mono font-bold',
-                  record.confidenceScore >= 0.9 ? 'text-destructive' :
-                  record.confidenceScore >= 0.8 ? 'text-warning' : 'text-muted-foreground'
+                  record.confidence >= 0.9 ? 'text-destructive' :
+                  record.confidence >= 0.8 ? 'text-warning' : 'text-muted-foreground'
                 )}>
-                  {(record.confidenceScore * 100).toFixed(1)}%
+                  {(record.confidence * 100).toFixed(1)}%
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase">Estado</p>
                 <p className={cn(
                   'text-sm font-medium',
-                  record.validationStatus === 'true_positive' && 'text-success',
-                  record.validationStatus === 'false_positive' && 'text-destructive',
-                  record.validationStatus === 'pending' && 'text-warning'
+                  record.validation_status === 'confirmed' && 'text-success',
+                  record.validation_status === 'false_positive' && 'text-destructive',
+                  record.validation_status === 'pending' && 'text-warning'
                 )}>
-                  {record.validationStatus === 'true_positive' ? 'Positivo Verdadero'
-                    : record.validationStatus === 'false_positive' ? 'Falso Positivo'
+                  {record.validation_status === 'confirmed' ? 'Confirmado'
+                    : record.validation_status === 'false_positive' ? 'Falso Positivo'
                     : 'Pendiente'}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase">Validado por</p>
-                <p className="text-sm text-foreground">{record.validatedBy || '-'}</p>
+                <p className="text-sm text-foreground">{record.validated_by || '-'}</p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase">ID Seguimiento</p>
-                <p className="text-sm font-mono text-foreground">{record.trackingId || '-'}</p>
+                <p className="text-[10px] text-muted-foreground uppercase">Registro ID</p>
+                <p className="text-sm font-mono text-foreground">{record.id || '-'}</p>
               </div>
             </div>
           </div>

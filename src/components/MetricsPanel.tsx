@@ -17,18 +17,18 @@ export function MetricsPanel({ metrics }: MetricsPanelProps) {
       </div>
 
       <div className="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
-        <MetricCard icon={Camera} label="Cámaras Activas" value={`${metrics.activeCameras}/${metrics.totalCameras}`}
-          status={metrics.activeCameras === metrics.totalCameras ? 'success' : 'warning'} />
-        <MetricCard icon={AlertCircle} label="Alertas Hoy" value={metrics.alertsToday.toString()}
-          status={metrics.alertsToday > 20 ? 'warning' : 'neutral'} />
-        <MetricCard icon={Clock} label="Latencia Prom." value={`${metrics.avgLatency.toFixed(1)}s`}
-          status={metrics.avgLatency < 2 ? 'success' : metrics.avgLatency < 3 ? 'warning' : 'error'} threshold="< 3s" />
-        <MetricCard icon={Target} label="Precisión Modelo" value={`${metrics.modelAccuracy.toFixed(1)}%`}
-          status={metrics.modelAccuracy >= 90 ? 'success' : 'warning'} threshold="> 90%" />
-        <MetricCard icon={Server} label="Uptime" value={`${metrics.systemUptime.toFixed(2)}%`}
-          status={metrics.systemUptime >= 99.9 ? 'success' : 'warning'} threshold="> 99.9%" />
-        <MetricCard icon={Gauge} label="FPS" value={`${metrics.processingFps}`}
-          status={metrics.processingFps >= 15 ? 'success' : 'error'} threshold="> 15" />
+        <MetricCard icon={Camera} label="Cámaras Activas" value={`${metrics.online_cameras || 0}/${metrics.total_cameras || 0}`}
+          status={(metrics.online_cameras || 0) === (metrics.total_cameras || 0) ? 'success' : 'warning'} />
+        <MetricCard icon={AlertCircle} label="Alertas Hoy" value={(metrics.alerts_today || 0).toString()}
+          status={(metrics.alerts_today || 0) > 20 ? 'warning' : 'neutral'} />
+        <MetricCard icon={Clock} label="Latencia Prom." value={`${((metrics.avg_latency_ms || 0) / 1000).toFixed(1)}s`}
+          status={(metrics.avg_latency_ms || 0) < 2000 ? 'success' : (metrics.avg_latency_ms || 0) < 3000 ? 'warning' : 'error'} threshold="< 3s" />
+        <MetricCard icon={Target} label="Precisión Modelo" value={`${(metrics.model_accuracy || 0).toFixed(1)}%`}
+          status={(metrics.model_accuracy || 0) >= 90 ? 'success' : 'warning'} threshold="> 90%" />
+        <MetricCard icon={Server} label="Uptime" value={`${(metrics.uptime_pct || 0).toFixed(2)}%`}
+          status={(metrics.uptime_pct || 0) >= 99.9 ? 'success' : 'warning'} threshold="> 99.9%" />
+        <MetricCard icon={Gauge} label="FPS" value={`${metrics.processing_fps || 0}`}
+          status={(metrics.processing_fps || 0) >= 15 ? 'success' : 'error'} threshold="> 15" />
       </div>
     </div>
   );

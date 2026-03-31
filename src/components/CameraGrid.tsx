@@ -95,7 +95,6 @@ function CameraCard({ camera, isSelected, onClick, isDragging }: CameraCardProps
               'relative aspect-video rounded-lg overflow-hidden border-2 transition-all duration-200 group w-full cursor-move',
               'bg-secondary hover:border-primary/50',
               isSelected ? 'border-primary box-glow-primary' : 'border-border',
-              camera.hasAlert && 'animate-pulse-glow border-destructive',
               isDragging && 'opacity-50'
             )}
           >
@@ -116,14 +115,14 @@ function CameraCard({ camera, isSelected, onClick, isDragging }: CameraCardProps
               <span className="text-[8px] sm:text-[9px] font-medium text-foreground/90 truncate max-w-[60px] sm:max-w-[80px]">{camera.zone}</span>
             </div>
 
-            {camera.hasAlert && (
-              <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-destructive/90 text-destructive-foreground">
+            {camera.status === 'warning' && (
+              <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-warning/90 text-warning-foreground">
                 <AlertTriangle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                <span className="text-[8px] sm:text-[10px] font-bold">ALERTA</span>
+                <span className="text-[8px] sm:text-[10px] font-bold">AVISO</span>
               </div>
             )}
 
-            {isOnline && !camera.hasAlert && (
+            {isOnline && camera.status !== 'warning' && (
               <div className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 flex items-center gap-1">
                 <Circle className="w-1.5 h-1.5 sm:w-2 sm:h-2 fill-destructive text-destructive animate-pulse" />
                 <span className="text-[8px] sm:text-[10px] font-mono text-foreground/80">REC</span>
@@ -153,7 +152,6 @@ function CameraCard({ camera, isSelected, onClick, isDragging }: CameraCardProps
                 {isOnline && (
                   <div className="text-right flex-shrink-0 hidden sm:block">
                     <p className="text-[10px] font-mono text-primary">{camera.fps} FPS</p>
-                    <p className="text-[10px] font-mono text-muted-foreground">{camera.resolution}</p>
                   </div>
                 )}
               </div>
@@ -173,9 +171,11 @@ function CameraCard({ camera, isSelected, onClick, isDragging }: CameraCardProps
           <div className="space-y-1">
             <p className="font-medium text-sm">{camera.name}</p>
             <p className="text-xs text-muted-foreground">{camera.location}, {camera.zone}</p>
-            <p className="text-xs text-muted-foreground">
-              Coords: {camera.coordinates.lat.toFixed(4)}, {camera.coordinates.lng.toFixed(4)}
-            </p>
+            {camera.lat !== undefined && camera.lng !== undefined && (
+              <p className="text-xs text-muted-foreground">
+                Coords: {camera.lat.toFixed(4)}, {camera.lng.toFixed(4)}
+              </p>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>

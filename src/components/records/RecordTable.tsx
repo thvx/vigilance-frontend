@@ -52,29 +52,29 @@ export function RecordTable({ records, onRecordClick, onExportSingle }: RecordTa
                   </p>
                 </td>
                 <td className="px-4 py-3">
-                  <p className="text-sm text-foreground">{record.cameraName}</p>
+                  <p className="text-sm text-foreground">{record.camera_name}</p>
                   <p className="text-xs text-muted-foreground">{record.location}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-sm text-foreground">{CRIME_TYPE_LABELS[record.crimeType]}</span>
+                  <span className="text-sm text-foreground">{CRIME_TYPE_LABELS[record.crime_type]}</span>
                 </td>
                 <td className="px-4 py-3">
                   <span className={cn(
                     'text-sm font-mono',
-                    record.confidenceScore >= 0.9 ? 'text-destructive' :
-                    record.confidenceScore >= 0.8 ? 'text-warning' : 'text-muted-foreground'
+                    record.confidence >= 0.9 ? 'text-destructive' :
+                    record.confidence >= 0.8 ? 'text-warning' : 'text-muted-foreground'
                   )}>
-                    {(record.confidenceScore * 100).toFixed(1)}%
+                    {(record.confidence * 100).toFixed(1)}%
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={record.validationStatus} />
+                  <StatusBadge status={record.validation_status} />
                 </td>
                 <td className="px-4 py-3">
-                  <p className="text-sm text-foreground">{record.validatedBy || '-'}</p>
-                  {record.validatedAt && (
+                  <p className="text-sm text-foreground">{record.validated_by || '-'}</p>
+                  {record.validated_at && (
                     <p className="text-[10px] text-muted-foreground">
-                      {format(record.validatedAt, 'HH:mm', { locale: es })}
+                      {format(record.validated_at, 'HH:mm', { locale: es })}
                     </p>
                   )}
                 </td>
@@ -121,17 +121,17 @@ export function RecordTable({ records, onRecordClick, onExportSingle }: RecordTa
                   {format(record.timestamp, 'dd/MM/yyyy HH:mm', { locale: es })}
                 </p>
               </div>
-              <StatusBadge status={record.validationStatus} />
+              <StatusBadge status={record.validation_status} />
             </div>
-            <p className="text-sm text-foreground font-medium">{record.cameraName}</p>
+            <p className="text-sm text-foreground font-medium">{record.camera_name}</p>
             <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-muted-foreground">{CRIME_TYPE_LABELS[record.crimeType]}</span>
+              <span className="text-xs text-muted-foreground">{CRIME_TYPE_LABELS[record.crime_type]}</span>
               <span className={cn(
                 'text-xs font-mono',
-                record.confidenceScore >= 0.9 ? 'text-destructive' :
-                record.confidenceScore >= 0.8 ? 'text-warning' : 'text-muted-foreground'
+                record.confidence >= 0.9 ? 'text-destructive' :
+                record.confidence >= 0.8 ? 'text-warning' : 'text-muted-foreground'
               )}>
-                {(record.confidenceScore * 100).toFixed(1)}%
+                {(record.confidence * 100).toFixed(1)}%
               </span>
             </div>
             <div className="flex items-center gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
@@ -149,18 +149,18 @@ export function RecordTable({ records, onRecordClick, onExportSingle }: RecordTa
   );
 }
 
-function StatusBadge({ status }: { status: HistoricalRecord['validationStatus'] }) {
+function StatusBadge({ status }: { status: HistoricalRecord['validation_status'] }) {
   return (
     <div className={cn(
       'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
-      status === 'true_positive' && 'bg-success/20 text-success',
+      status === 'confirmed' && 'bg-success/20 text-success',
       status === 'false_positive' && 'bg-destructive/20 text-destructive',
       status === 'pending' && 'bg-warning/20 text-warning'
     )}>
-      {status === 'true_positive' && <CheckCircle className="w-3 h-3" />}
+      {status === 'confirmed' && <CheckCircle className="w-3 h-3" />}
       {status === 'false_positive' && <XCircle className="w-3 h-3" />}
       {status === 'pending' && <Clock className="w-3 h-3" />}
-      {status === 'true_positive' ? 'Verdadero' : status === 'false_positive' ? 'Falso' : 'Pendiente'}
+      {status === 'confirmed' ? 'Confirmado' : status === 'false_positive' ? 'Falso' : 'Pendiente'}
     </div>
   );
 }

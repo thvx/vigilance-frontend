@@ -28,7 +28,7 @@ interface ValidationModalProps {
 export function ValidationModal({ alert, isOpen, onClose, onValidate, relatedAlerts = [] }: ValidationModalProps) {
   if (!alert) return null;
 
-  const severity = CRIME_TYPE_SEVERITY[alert.crimeType];
+  const severity = CRIME_TYPE_SEVERITY[alert.crime_type];
 
   const handleValidate = (isTrue: boolean) => {
     onValidate(alert.id, isTrue);
@@ -53,7 +53,7 @@ export function ValidationModal({ alert, isOpen, onClose, onValidate, relatedAle
               <div className="text-center">
                 <Camera className="w-12 h-12 text-muted-foreground/50 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">Vista previa del evento</p>
-                <p className="text-xs text-muted-foreground/70 font-mono">{alert.cameraId}</p>
+                <p className="text-xs text-muted-foreground/70 font-mono">{alert.camera_id}</p>
               </div>
             </div>
             
@@ -66,26 +66,26 @@ export function ValidationModal({ alert, isOpen, onClose, onValidate, relatedAle
               severity === 'low' && 'bg-primary text-primary-foreground'
             )}>
               <AlertTriangle className="w-3 h-3" />
-              {CRIME_TYPE_LABELS[alert.crimeType]}
+              {CRIME_TYPE_LABELS[alert.crime_type]}
             </div>
 
             {/* Confidence Score */}
             <div className="absolute top-3 right-3 px-2 py-1 rounded bg-background/90 border border-border">
               <span className="text-xs font-mono text-foreground">
                 Confianza: <span className={cn(
-                  alert.confidenceScore >= 0.9 ? 'text-destructive' :
-                  alert.confidenceScore >= 0.8 ? 'text-warning' : 'text-muted-foreground'
+                  alert.confidence >= 0.9 ? 'text-destructive' :
+                  alert.confidence >= 0.8 ? 'text-warning' : 'text-muted-foreground'
                 )}>
-                  {(alert.confidenceScore * 100).toFixed(1)}%
+                  {(alert.confidence * 100).toFixed(1)}%
                 </span>
               </span>
             </div>
 
-            {/* Tracking Badge */}
-            {alert.trackingId && (
+            {/* Event ID Badge */}
+            {alert.id && (
               <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-primary/90 text-primary-foreground text-xs font-mono flex items-center gap-1">
                 <Link2 className="w-3 h-3" />
-                {alert.trackingId}
+                {alert.id.slice(0, 8)}
               </div>
             )}
           </div>
@@ -96,7 +96,7 @@ export function ValidationModal({ alert, isOpen, onClose, onValidate, relatedAle
               <div className="flex items-center gap-2 text-sm">
                 <Camera className="w-4 h-4 text-primary" />
                 <span className="text-muted-foreground">Cámara:</span>
-                <span className="text-foreground font-medium">{alert.cameraName}</span>
+                <span className="text-foreground font-medium">{alert.camera_name}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <MapPin className="w-4 h-4 text-primary" />
@@ -113,26 +113,26 @@ export function ValidationModal({ alert, isOpen, onClose, onValidate, relatedAle
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <Volume2 className={cn('w-4 h-4', alert.paEnabled ? 'text-success' : 'text-muted-foreground')} />
+                <Volume2 className={cn('w-4 h-4', alert.pa_triggered ? 'text-success' : 'text-muted-foreground')} />
                 <span className="text-muted-foreground">Perifoneo:</span>
                 <span className={cn(
                   'font-medium',
-                  alert.paEnabled ? 'text-success' : 'text-muted-foreground'
+                  alert.pa_triggered ? 'text-success' : 'text-muted-foreground'
                 )}>
-                  {alert.paEnabled ? 'Activado' : 'Inactivo'}
+                  {alert.pa_triggered ? 'Activado' : 'Inactivo'}
                 </span>
               </div>
             </div>
           </div>
 
           {/* PA Message */}
-          {alert.paEnabled && alert.paMessage && (
+          {alert.pa_triggered && (
             <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
               <div className="flex items-start gap-2">
                 <MessageSquare className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs text-primary font-medium mb-1">Mensaje de Perifoneo</p>
-                  <p className="text-sm text-foreground">{alert.paMessage}</p>
+                  <p className="text-sm text-foreground">Perifoneo activado para este evento</p>
                 </div>
               </div>
             </div>
@@ -150,7 +150,7 @@ export function ValidationModal({ alert, isOpen, onClose, onValidate, relatedAle
                   <div key={related.id} className="flex items-center justify-between text-xs p-2 rounded bg-background/50">
                     <div className="flex items-center gap-2">
                       <Camera className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-foreground">{related.cameraName}</span>
+                      <span className="text-foreground">{related.camera_name}</span>
                     </div>
                     <span className="font-mono text-muted-foreground">
                       {format(related.timestamp, 'HH:mm:ss', { locale: es })}
@@ -171,10 +171,10 @@ export function ValidationModal({ alert, isOpen, onClose, onValidate, relatedAle
                 <p className="text-xs text-muted-foreground mb-1">ID del Evento</p>
                 <p className="font-mono text-sm text-foreground">{alert.id}</p>
               </div>
-              {alert.trackingId && (
+              {alert.id && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">ID de Seguimiento</p>
-                  <p className="font-mono text-sm text-foreground">{alert.trackingId}</p>
+                  <p className="text-xs text-muted-foreground mb-1">ID del Evento</p>
+                  <p className="font-mono text-sm text-foreground">{alert.id}</p>
                 </div>
               )}
             </div>

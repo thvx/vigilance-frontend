@@ -55,15 +55,15 @@ export function DashboardHeader({ metrics }: DashboardHeaderProps) {
             <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-secondary border border-border">
               <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
               <span className="text-[10px] sm:text-xs font-mono text-foreground">
-                {metrics.activeCameras}/{metrics.totalCameras}
+                {metrics.online_cameras}/{metrics.total_cameras}
               </span>
             </div>
 
             {/* Latency */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary border border-border">
-              <div className={`w-2 h-2 rounded-full ${metrics.avgLatency < 2 ? 'bg-success' : metrics.avgLatency < 3 ? 'bg-warning' : 'bg-destructive'}`} />
+              <div className={`w-2 h-2 rounded-full ${metrics.avg_latency_ms < 2000 ? 'bg-success' : metrics.avg_latency_ms < 3000 ? 'bg-warning' : 'bg-destructive'}`} />
               <span className="text-xs font-mono text-foreground">
-                {metrics.avgLatency.toFixed(1)}s
+                {(metrics.avg_latency_ms / 1000).toFixed(1)}s
               </span>
             </div>
 

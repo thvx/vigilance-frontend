@@ -3,28 +3,33 @@ export interface Camera {
   name: string;
   location: string;
   zone: string;
-  coordinates: { lat: number; lng: number };
-  status: 'online' | 'offline' | 'warning';
+  model: string;
+  ip: string;
+  hls_url: string;
+  rtsp_url: string;
+  lat: number;
+  lng: number;
+  status: 'online' | 'offline' | 'warning' | 'unknown';
   fps: number;
-  resolution: string;
-  hasAlert: boolean;
-  nearestCameras: string[]; // IDs de cámaras cercanas para seguimiento
+  latency_ms: number;
 }
 
 export interface Alert {
   id: string;
-  cameraId: string;
-  cameraName: string;
-  timestamp: Date;
-  crimeType: CrimeType;
-  confidenceScore: number;
-  status: 'pending' | 'validated_true' | 'validated_false' | 'escalated';
-  thumbnailUrl?: string;
+  camera_id: string;
+  camera_name: string;
   location: string;
-  paEnabled: boolean;
-  paMessage?: string;
-  trackingId?: string; // Para seguimiento multi-cámara
-  relatedAlerts?: string[]; // IDs de alertas relacionadas en otras cámaras
+  crime_type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  confidence: number;
+  timestamp: string;
+  thumbnail_url?: string;
+  clip_url?: string;
+  pa_triggered: boolean;
+  related_cameras: string[];
+  validation_status: 'pending' | 'confirmed' | 'false_positive';
+  validated_by?: string;
+  validated_at?: string;
 }
 
 export type CrimeType = 
@@ -38,31 +43,36 @@ export type CrimeType =
   | 'armed_threat';
 
 export interface SystemMetrics {
-  totalCameras: number;
-  activeCameras: number;
-  alertsToday: number;
-  avgLatency: number;
-  modelAccuracy: number;
-  systemUptime: number;
-  processingFps: number;
+  total_cameras: number;
+  online_cameras: number;
+  offline_cameras: number;
+  warning_cameras: number;
+  alerts_today: number;
+  avg_latency_ms: number;
+  avg_fps: number;
+  model_accuracy: number;
+  uptime_pct: number;
+  processing_fps: number;
 }
 
 export interface HistoricalRecord {
   id: string;
-  cameraId: string;
-  cameraName: string;
-  timestamp: Date;
-  crimeType: CrimeType;
-  confidenceScore: number;
-  validationStatus: 'true_positive' | 'false_positive' | 'pending';
-  validatedBy?: string;
-  validatedAt?: Date;
-  evidenceUrl?: string;
+  camera_id: string;
+  camera_name: string;
   location: string;
-  trackingId?: string;
+  crime_type: string;
+  severity: string;
+  confidence: number;
+  timestamp: string;
+  thumbnail_url?: string;
+  clip_url?: string;
+  pa_triggered: boolean;
+  validation_status: 'pending' | 'confirmed' | 'false_positive';
+  validated_by?: string;
+  validated_at?: string;
 }
 
-export const CRIME_TYPE_LABELS: Record<CrimeType, string> = {
+export const CRIME_TYPE_LABELS: Record<string, string> = {
   robbery: 'Robo',
   assault: 'Agresión',
   vandalism: 'Vandalismo',
@@ -73,7 +83,21 @@ export const CRIME_TYPE_LABELS: Record<CrimeType, string> = {
   armed_threat: 'Amenaza Armada',
 };
 
-export const CRIME_TYPE_SEVERITY: Record<CrimeType, 'low' | 'medium' | 'high' | 'critical'> = {
+export const SEVERITY_LABELS: Record<string, string> = {
+  critical: '🔴 Crítica',
+  high: '🔴 Alta',
+  medium: '🟠 Media',
+  low: '🟡 Baja',
+};
+
+export const SEVERITY_COLORS: Record<string, string> = {
+  critical: 'bg-red-900 text-white',
+  high: 'bg-red-600 text-white',
+  medium: 'bg-orange-500 text-white',
+  low: 'bg-yellow-500 text-white',
+};
+
+export const CRIME_TYPE_SEVERITY: Record<string, 'low' | 'medium' | 'high' | 'critical'> = {
   suspicious_activity: 'low',
   vandalism: 'medium',
   theft: 'medium',
@@ -85,7 +109,7 @@ export const CRIME_TYPE_SEVERITY: Record<CrimeType, 'low' | 'medium' | 'high' | 
 };
 
 // Mensajes de perifoneo según tipo de delito
-export const PA_MESSAGES: Record<CrimeType, string> = {
+export const PA_MESSAGES: Record<string, string> = {
   robbery: '¡Atención! Se ha detectado un posible robo en esta zona. Las autoridades han sido notificadas. Abandone el área inmediatamente.',
   assault: '¡Alerta de seguridad! Se ha detectado una agresión. Personal de seguridad en camino. Por favor, mantenga distancia.',
   vandalism: 'Atención: Actividad de vandalismo detectada. Esta área está siendo monitoreada. Las autoridades han sido alertadas.',

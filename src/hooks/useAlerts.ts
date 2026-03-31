@@ -21,7 +21,7 @@ export function useAlerts(cameras: Camera[]) {
 
         toast({
           title: '🚨 Nueva Alerta Detectada',
-          description: `${newAlert.cameraName} - ${CRIME_TYPE_LABELS[newAlert.crimeType]}`,
+          description: `${newAlert.camera_name} - ${CRIME_TYPE_LABELS[newAlert.crime_type]}`,
           variant: 'destructive',
         });
 
@@ -33,7 +33,7 @@ export function useAlerts(cameras: Camera[]) {
               setAlerts(prev => {
                 const updated = prev.map(a =>
                   a.id === newAlert.id
-                    ? { ...a, relatedAlerts: [...(a.relatedAlerts || []), relatedAlert.id] }
+                    ? { ...a, related_cameras: [...(a.related_cameras || []), relatedAlert.camera_id] }
                     : a
                 );
                 return [relatedAlert, ...updated];
@@ -41,7 +41,7 @@ export function useAlerts(cameras: Camera[]) {
 
               toast({
                 title: '🔗 Seguimiento Multi-Cámara',
-                description: `Sujeto detectado continuando en ${relatedAlert.cameraName}`,
+                description: `Sujeto detectado continuando en ${relatedAlert.camera_name}`,
               });
             }
           }, 5000 + Math.random() * 10000);
@@ -55,7 +55,7 @@ export function useAlerts(cameras: Camera[]) {
   const handleValidate = useCallback((alertId: string, isTrue: boolean) => {
     setAlerts(prev => prev.map(alert =>
       alert.id === alertId
-        ? { ...alert, status: isTrue ? 'validated_true' : 'validated_false' }
+        ? { ...alert, validation_status: isTrue ? 'confirmed' : 'false_positive' }
         : alert
     ));
 
@@ -67,8 +67,10 @@ export function useAlerts(cameras: Camera[]) {
   }, [toast]);
 
   const getRelatedAlerts = useCallback((alert: Alert | null) => {
-    if (!alert?.trackingId) return [];
-    return alerts.filter(a => a.trackingId === alert.trackingId && a.id !== alert.id);
+    if (!alert?.related_cameras || alert.related_cameras.length === 0) return [];
+    return alerts.filter(a => 
+      alert.related_cameras.includes(a.camera_id) && a.id !== alert.id
+    );
   }, [alerts]);
 
   return { alerts, handleValidate, getRelatedAlerts };

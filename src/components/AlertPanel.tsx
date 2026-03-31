@@ -14,12 +14,12 @@ interface AlertPanelProps {
 const MAX_ALERT_PANEL_HEIGHT = 'max-h-[calc(100vh-200px)]';
 
 export function AlertPanel({ alerts, onAlertSelect }: AlertPanelProps) {
-  const pendingAlerts = alerts.filter(a => a.status === 'pending' || a.status === 'escalated');
+  const pendingAlerts = alerts.filter(a => a.validation_status === 'pending' || a.validation_status === 'confirmed');
 
   const groupedAlerts = pendingAlerts.reduce((acc, alert) => {
-    if (alert.trackingId) {
-      if (!acc[alert.trackingId]) acc[alert.trackingId] = [];
-      acc[alert.trackingId].push(alert);
+    if (alert.id) {
+      if (!acc[alert.id]) acc[alert.id] = [];
+      acc[alert.id].push(alert);
     }
     return acc;
   }, {} as Record<string, Alert[]>);
@@ -48,8 +48,8 @@ export function AlertPanel({ alerts, onAlertSelect }: AlertPanelProps) {
         ) : (
           <div className="divide-y divide-border">
             {pendingAlerts.map((alert) => {
-              const relatedCount = alert.trackingId
-                ? (groupedAlerts[alert.trackingId]?.length || 1) - 1
+              const relatedCount = alert.id
+                ? (groupedAlerts[alert.id]?.length || 1) - 1
                 : 0;
               return (
                 <AlertCard
@@ -74,8 +74,8 @@ interface AlertCardProps {
 }
 
 function AlertCard({ alert, onClick, relatedCount }: AlertCardProps) {
-  const severity = CRIME_TYPE_SEVERITY[alert.crimeType];
-  const isEscalated = alert.status === 'escalated';
+  const severity = CRIME_TYPE_SEVERITY[alert.crime_type];
+  const isEscalated = alert.validation_status === 'confirmed';
 
   return (
     <TooltipProvider>
@@ -101,19 +101,19 @@ function AlertCard({ alert, onClick, relatedCount }: AlertCardProps) {
                 'font-semibold text-sm',
                 severity === 'critical' || severity === 'high' ? 'text-destructive' : 'text-foreground'
               )}>
-                {CRIME_TYPE_LABELS[alert.crimeType]}
+                {CRIME_TYPE_LABELS[alert.crime_type]}
               </span>
               <span className={cn(
                 'text-xs font-mono px-1.5 py-0.5 rounded',
-                alert.confidenceScore >= 0.9 ? 'bg-destructive/20 text-destructive' :
-                alert.confidenceScore >= 0.8 ? 'bg-warning/20 text-warning' :
+                alert.confidence >= 0.9 ? 'bg-destructive/20 text-destructive' :
+                alert.confidence >= 0.8 ? 'bg-warning/20 text-warning' :
                 'bg-muted text-muted-foreground'
               )}>
-                {(alert.confidenceScore * 100).toFixed(0)}%
+                {(alert.confidence * 100).toFixed(0)}%
               </span>
             </div>
 
-            <p className="text-xs text-foreground/80 font-medium truncate">{alert.cameraName}</p>
+            <p className="text-xs text-foreground/80 font-medium truncate">{alert.camera_name}</p>
             <div className="flex items-center gap-1 text-muted-foreground mt-1">
               <MapPin className="w-3 h-3 flex-shrink-0" />
               <span className="text-[10px] truncate">{alert.location}</span>
@@ -136,7 +136,7 @@ function AlertCard({ alert, onClick, relatedCount }: AlertCardProps) {
                 </span>
               </div>
 
-              {alert.paEnabled && (
+              {alert.pa_triggered && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-1 text-primary cursor-help">
@@ -147,7 +147,7 @@ function AlertCard({ alert, onClick, relatedCount }: AlertCardProps) {
                   <TooltipContent side="left" className="max-w-xs">
                     <div className="flex items-start gap-2">
                       <MessageSquare className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                      <p className="text-xs">{alert.paMessage}</p>
+                      <p className="text-xs">Perifoneo activado</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -155,9 +155,9 @@ function AlertCard({ alert, onClick, relatedCount }: AlertCardProps) {
             </div>
 
             {isEscalated && (
-              <div className="mt-2 flex items-center gap-1 px-2 py-1 rounded bg-destructive/20 text-destructive w-fit">
+              <div className="mt-2 flex items-center gap-1 px-2 py-1 rounded bg-success/20 text-success w-fit">
                 <AlertTriangle className="w-3 h-3" />
-                <span className="text-[10px] font-bold">ESCALADO</span>
+                <span className="text-[10px] font-bold">CONFIRMADO</span>
               </div>
             )}
           </div>

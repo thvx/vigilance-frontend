@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { HistoricalRecord } from '@/types/surveillance';
 import { mockHistoricalRecords } from '@/data/mockData';
 import { exportRecordsToExcel, exportSingleRecordToExcel } from '@/services/exportService';
-import { recordService } from '@/services/api';
+import { recordService, apiClient } from '@/services/api';
 import { downloadBlob } from '@/services/exportService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,21 +36,21 @@ export function useRecords() {
   const filteredRecords = useMemo(() => {
     return records.filter(record => {
       const matchesSearch =
-        record.cameraName.toLowerCase().includes(filters.search.toLowerCase()) ||
+        record.camera_name.toLowerCase().includes(filters.search.toLowerCase()) ||
         record.location.toLowerCase().includes(filters.search.toLowerCase()) ||
         record.id.toLowerCase().includes(filters.search.toLowerCase());
 
-      const matchesCrimeType = filters.crimeTypes.length === 0 || filters.crimeTypes.includes(record.crimeType);
-      const matchesStatus = filters.statuses.length === 0 || filters.statuses.includes(record.validationStatus);
+      const matchesCrimeType = filters.crimeTypes.length === 0 || filters.crimeTypes.includes(record.crime_type);
+      const matchesStatus = filters.statuses.length === 0 || filters.statuses.includes(record.validation_status);
 
       let matchesDate = true;
       if (filters.date.from) {
-        matchesDate = record.timestamp >= filters.date.from;
+        matchesDate = new Date(record.timestamp) >= filters.date.from;
       }
       if (filters.date.to && matchesDate) {
         const endOfDay = new Date(filters.date.to);
         endOfDay.setHours(23, 59, 59, 999);
-        matchesDate = record.timestamp <= endOfDay;
+        matchesDate = new Date(record.timestamp) <= endOfDay;
       }
 
       return matchesSearch && matchesCrimeType && matchesStatus && matchesDate;
@@ -68,13 +68,14 @@ export function useRecords() {
       return;
     }
     try {
-      const blob = await recordService.exportAll({
-        search: filters.search,
-        crimeTypes: filters.crimeTypes,
-        statuses: filters.statuses,
-        dateFrom: filters.date.from?.toISOString(),
-        dateTo: filters.date.to?.toISOString(),
-      });
+      const params: Record<string, string> = {};
+      if (filters.search) params.search = filters.search;
+      if (filters.crimeTypes.length) params.crime_type = filters.crimeTypes.join(',');
+      if (filters.statuses.length) params.validation = filters.statuses.join(',');
+      if (filters.date.from) params.date_from = filters.date.from.toISOString();
+      if (filters.date.to) params.date_to = filters.date.to.toISOString();
+      
+      const blob = await apiClient.getBlob('/export/records/excel', params);
       downloadBlob(blob, `registros_${Date.now()}.xlsx`);
     } catch {
       toast({ title: 'Error', description: 'No se pudo exportar', variant: 'destructive' });
@@ -88,7 +89,7 @@ export function useRecords() {
       return;
     }
     try {
-      const blob = await recordService.exportSingle(record.id);
+      const blob = await apiClient.getBlob(`/export/records/${record.id}/zip`);
       downloadBlob(blob, `registro_${record.id}.zip`);
     } catch {
       toast({ title: 'Error', description: 'No se pudo exportar', variant: 'destructive' });

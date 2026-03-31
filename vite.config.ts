@@ -7,7 +7,27 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 5173,  // Changed from 8080 to standard Vite port
+    proxy: {
+      // Proxy /api requests to backend
+      '/api': {
+        target: 'http://localhost',
+        changeOrigin: true,
+        secure: false,
+      },
+      // Proxy WebSocket connections
+      '/ws': {
+        target: 'ws://localhost',
+        ws: true,
+        changeOrigin: true,
+      },
+      // Proxy HLS streams
+      '/hls': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
