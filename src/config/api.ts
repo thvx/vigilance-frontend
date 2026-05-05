@@ -1,18 +1,16 @@
 export const API_CONFIG = {
-  // Base URL for all REST API endpoints
-  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost/api',
+  // 🔥 URL REAL DE TU BACKEND FASTAPI
+  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api',
   
-  // WebSocket URL for live events (alerts, camera status, etc)
-  wsUrl: import.meta.env.VITE_WS_URL || 'ws://localhost/ws',
+  // 🔥 WEBSOCKET CORRECTO
+  wsUrl: import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8000/ws',
   
   // Request timeout in milliseconds
   timeout: 30000,
   
   // Video stream settings
   video: {
-    // Max reconnection attempts for live streams
     maxReconnectAttempts: 5,
-    // Reconnection delay in milliseconds
     reconnectDelay: 3000,
   },
 } as const;
@@ -31,12 +29,17 @@ export const VIDEO_SOURCES: Record<VideoSourceType, VideoSourceConfig> = {
     type: 'genetec',
     label: 'Genetec Security Center',
     description: 'Conexión a cámaras IP vía Genetec Security Center 5.10 API',
+    
+    // 🔥 IMPORTANTE: mantiene consistencia con backend
     streamUrlPattern: `${API_CONFIG.baseUrl}/streams/genetec/{cameraId}/hls`,
   },
+
   mobile_camera: {
     type: 'mobile_camera',
     label: 'Cámara Móvil',
     description: 'Transmisión desde dispositivo móvil vía WebRTC/RTMP',
+    
+    // 🔥 igual aquí
     streamUrlPattern: `${API_CONFIG.baseUrl}/streams/mobile/{cameraId}/hls`,
   },
 };

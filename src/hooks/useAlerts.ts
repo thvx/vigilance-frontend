@@ -1,77 +1,394 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Alert, Camera, CRIME_TYPE_LABELS } from '@/types/surveillance';
-import { mockAlerts, generateRandomAlert, generateRelatedAlert } from '@/data/mockData';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef
+} from 'react';
+
+import {
+  Alert,
+  Camera,
+  CRIME_TYPE_LABELS
+} from '@/types/surveillance';
+
 import { useToast } from '@/hooks/use-toast';
 
-/**
- * Hook for managing alerts state, including mock simulation
- * and multi-camera tracking. Replace mock logic with WebSocket
- * events in production.
- */
-export function useAlerts(cameras: Camera[]) {
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+import { API_CONFIG } from '@/config/api';
+
+export function useAlerts(
+  cameras: Camera[]
+) {
+
+  const [alerts, setAlerts] =
+    useState<Alert[]>([]);
+
+  const [connected, setConnected] =
+    useState(false);
+
   const { toast } = useToast();
 
-  // Simulate new alerts (replace with wsService.on('alert:new') in production)
+  const wsRef =
+    useRef<WebSocket | null>(null);
+
+  const reconnectTimeout =
+    useRef<NodeJS.Timeout | null>(null);
+
+  const lastAlertRef =
+    useRef<number>(0);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7) {
-        const newAlert = generateRandomAlert();
-        setAlerts(prev => [newAlert, ...prev]);
+
+    if (
+      !cameras ||
+      cameras.length === 0
+    ) {
+      return;
+    }
+
+    const token =
+      localStorage.getItem(
+        'token'
+      );
+
+    if (!token) {
+
+      console.warn(
+        '⚠️ No hay token'
+      );
+
+      return;
+    }
+
+    const connect = () => {
+
+      if (wsRef.current) {
+        return;
+      }
+
+      const ws =
+        new WebSocket(
+          `${API_CONFIG.wsUrl}/alerts`
+        );
+
+      wsRef.current = ws;
+
+      // ─────────────────────────────
+      // CONNECT
+      // ─────────────────────────────
+
+      ws.onopen = () => {
+
+        console.log(
+          '🟢 WebSocket conectado'
+        );
+
+        setConnected(true);
+      };
+
+      // ─────────────────────────────
+      // MESSAGE
+      // ─────────────────────────────
+
+      ws.onmessage = (event) => {
+
+        try {
+
+          const data =
+            JSON.parse(event.data);
+
+          console.log(
+            '📩 ALERTA RECIBIDA:',
+            data
+          );
+
+          const now =
+            Date.now();
+
+          // evita spam
+          if (
+            now -
+              lastAlertRef.current <
+            5000
+          ) {
+            return;
+          }
+
+          lastAlertRef.current =
+            now;
+
+          if (!data.camera_id) {
+            return;
+          }
+
+          // ✅ FIX IMPORTANTE
+          // el backend ya manda:
+          // CAM-001
+          // CAM-002
+          // etc
+
+          const cameraIdFormatted =
+            data.camera_id;
+
+          const camera =
+            cameras.find(
+              c =>
+                c.id ===
+                cameraIdFormatted
+            );
+
+          if (!camera) {
+
+            console.warn(
+              '⚠️ Cámara no encontrada:',
+              cameraIdFormatted
+            );
+
+            return;
+          }
+
+          const newAlert: Alert = {
+
+            id:
+              `ALT-${Date.now()}`,
+
+            camera_id:
+              camera.id,
+
+            camera_name:
+              camera.name,
+
+            timestamp:
+              data.timestamp,
+
+            crime_type:
+              data.prediction.toLowerCase(),
+
+            confidence:
+              data.confidence,
+
+            validation_status:
+              'pending',
+
+            location:
+              camera.location,
+
+            pa_triggered:
+              data.confidence > 0.85,
+
+            related_cameras: [],
+
+            severity:
+              data.confidence > 0.9
+                ? 'critical'
+                : data.confidence >
+                  0.85
+                ? 'high'
+                : data.confidence >
+                  0.75
+                ? 'medium'
+                : 'low',
+          };
+
+          // evita duplicados
+          setAlerts(prev => {
+
+            const exists =
+              prev.find(
+                a =>
+                  a.camera_id ===
+                    newAlert.camera_id &&
+                  a.crime_type ===
+                    newAlert.crime_type &&
+                  Date.now() -
+                    new Date(
+                      a.timestamp
+                    ).getTime() <
+                    10000
+              );
+
+            if (exists) {
+              return prev;
+            }
+
+            return [
+              newAlert,
+              ...prev,
+            ].slice(0, 50);
+          });
+
+          toast({
+
+            title:
+              '🚨 Alerta detectada',
+
+            description:
+              `${newAlert.camera_name} - ${
+                CRIME_TYPE_LABELS[
+                  newAlert.crime_type
+                ] ||
+                newAlert.crime_type
+              }`,
+
+            variant:
+              'destructive',
+          });
+
+        } catch (err) {
+
+          console.error(
+            '❌ Error parseando WS:',
+            err
+          );
+        }
+      };
+
+      // ─────────────────────────────
+      // CLOSE
+      // ─────────────────────────────
+
+      ws.onclose = () => {
+
+        console.warn(
+          '🔴 WebSocket desconectado'
+        );
+
+        setConnected(false);
+
+        wsRef.current = null;
+
+        reconnectTimeout.current =
+          setTimeout(() => {
+
+            connect();
+
+          }, 3000);
+      };
+
+      // ─────────────────────────────
+      // ERROR
+      // ─────────────────────────────
+
+      ws.onerror = (err) => {
+
+        console.error(
+          '❌ WS error:',
+          err
+        );
+
+        ws.close();
+      };
+    };
+
+    connect();
+
+    // cleanup
+    return () => {
+
+      if (
+        reconnectTimeout.current
+      ) {
+        clearTimeout(
+          reconnectTimeout.current
+        );
+      }
+
+      if (wsRef.current) {
+
+        wsRef.current.close();
+
+        wsRef.current = null;
+      }
+    };
+
+  }, [cameras, toast]);
+
+  // ─────────────────────────────
+  // VALIDAR ALERTA
+  // ─────────────────────────────
+
+  const handleValidate =
+    useCallback(
+
+      (
+        alertId: string,
+        isTrue: boolean
+      ) => {
+
+        setAlerts(prev =>
+          prev.map(alert =>
+
+            alert.id === alertId
+
+              ? {
+                  ...alert,
+
+                  validation_status:
+                    isTrue
+                      ? 'confirmed'
+                      : 'false_positive',
+                }
+
+              : alert
+          )
+        );
 
         toast({
-          title: '🚨 Nueva Alerta Detectada',
-          description: `${newAlert.camera_name} - ${CRIME_TYPE_LABELS[newAlert.crime_type]}`,
-          variant: 'destructive',
+
+          title: isTrue
+            ? '✓ Alerta validada'
+            : '✗ Falso positivo',
+
+          description:
+            alertId,
+
+          variant: isTrue
+            ? 'default'
+            : 'destructive',
         });
 
-        // Multi-camera tracking simulation
-        if (Math.random() > 0.7) {
-          setTimeout(() => {
-            const relatedAlert = generateRelatedAlert(newAlert, cameras);
-            if (relatedAlert) {
-              setAlerts(prev => {
-                const updated = prev.map(a =>
-                  a.id === newAlert.id
-                    ? { ...a, related_cameras: [...(a.related_cameras || []), relatedAlert.camera_id] }
-                    : a
-                );
-                return [relatedAlert, ...updated];
-              });
+      },
 
-              toast({
-                title: '🔗 Seguimiento Multi-Cámara',
-                description: `Sujeto detectado continuando en ${relatedAlert.camera_name}`,
-              });
-            }
-          }, 5000 + Math.random() * 10000);
-        }
-      }
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [toast, cameras]);
-
-  const handleValidate = useCallback((alertId: string, isTrue: boolean) => {
-    setAlerts(prev => prev.map(alert =>
-      alert.id === alertId
-        ? { ...alert, validation_status: isTrue ? 'confirmed' : 'false_positive' }
-        : alert
-    ));
-
-    toast({
-      title: isTrue ? '✓ Alerta Validada' : '✗ Falso Positivo Registrado',
-      description: `El evento ${alertId} ha sido clasificado`,
-      variant: isTrue ? 'default' : 'destructive',
-    });
-  }, [toast]);
-
-  const getRelatedAlerts = useCallback((alert: Alert | null) => {
-    if (!alert?.related_cameras || alert.related_cameras.length === 0) return [];
-    return alerts.filter(a => 
-      alert.related_cameras.includes(a.camera_id) && a.id !== alert.id
+      [toast]
     );
-  }, [alerts]);
 
-  return { alerts, handleValidate, getRelatedAlerts };
+  // ─────────────────────────────
+  // ALERTAS RELACIONADAS
+  // ─────────────────────────────
+
+  const getRelatedAlerts =
+    useCallback(
+
+      (alert: Alert | null) => {
+
+        if (
+          !alert?.related_cameras
+            ?.length
+        ) {
+          return [];
+        }
+
+        return alerts.filter(
+          a =>
+
+            alert.related_cameras.includes(
+              a.camera_id
+            ) &&
+
+            a.id !== alert.id
+        );
+      },
+
+      [alerts]
+    );
+
+  return {
+
+    alerts,
+
+    handleValidate,
+
+    getRelatedAlerts,
+
+    connected,
+  };
 }

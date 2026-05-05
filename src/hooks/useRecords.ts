@@ -1,10 +1,36 @@
-import { useState, useMemo, useCallback } from 'react';
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect
+} from 'react';
+
 import { HistoricalRecord } from '@/types/surveillance';
-import { mockHistoricalRecords } from '@/data/mockData';
 import { exportRecordsToExcel, exportSingleRecordToExcel } from '@/services/exportService';
-import { recordService, apiClient } from '@/services/api';
+import { apiClient } from '@/services/api';
 import { downloadBlob } from '@/services/exportService';
 import { useToast } from '@/hooks/use-toast';
+
+// 🔥 DESACTIVAMOS MOCK
+const USE_MOCK = false;
+
+// 🔥 MAPEO FRONT → BACKEND
+const CRIME_TYPE_BACKEND_MAP: Record<string, string> = {
+  theft: "hurto",
+  robbery: "robo",
+  assault: "agresion",
+  vandalism: "vandalismo",
+  suspicious_activity: "actividad_sospechosa",
+  intrusion: "intrusion",
+  vehicle_theft: "robo_vehiculo",
+  armed_threat: "amenaza_armada"
+};
+
+const STATUS_BACKEND_MAP: Record<string, string> = {
+  true_positive: "confirmed",
+  false_positive: "false_positive",
+  pending: "pending"
+};
 
 export interface DateFilter {
   mode: 'single' | 'range';
@@ -14,91 +40,234 @@ export interface DateFilter {
 
 export interface RecordFilters {
   search: string;
-  crimeTypes: string[]; // Changed to array
-  statuses: string[]; // Changed to array
+  crimeTypes: string[];
+  statuses: string[];
   date: DateFilter;
 }
 
-const USE_MOCK = true; // Toggle to false when backend is ready
-
 export function useRecords() {
+
   const [filters, setFilters] = useState<RecordFilters>({
     search: '',
     crimeTypes: [],
     statuses: [],
     date: { mode: 'range', from: null, to: null },
   });
-  const [selectedRecord, setSelectedRecord] = useState<HistoricalRecord | null>(null);
+
+  const [records, setRecords] = useState<HistoricalRecord[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  const [selectedRecord, setSelectedRecord] =
+    useState<HistoricalRecord | null>(null);
+
   const { toast } = useToast();
 
-  const records = mockHistoricalRecords; // Replace with API call
+  // ─────────────────────────────
+  // 🔥 FETCH CORREGIDO (CLAVE)
+  // ─────────────────────────────
+
+  useEffect(() => {
+
+    if (USE_MOCK) return;
+
+    const controller = new AbortController();
+
+    const fetchRecords = async () => {
+
+      try {
+
+        setLoading(true);
+
+        const params = new URLSearchParams();
+
+        if (filters.search) {
+          params.append("search", filters.search);
+        }
+
+        // 🔥 CRIME TYPE (MAPEO + ENVÍO CORRECTO)
+        if (filters.crimeTypes.length > 0) {
+          const mapped = filters.crimeTypes.map(
+            (type) => CRIME_TYPE_BACKEND_MAP[type] || type
+          );
+
+          // backend soporta 1
+          params.append("crime_type", mapped[0]);
+        }
+
+        // 🔥 STATUS
+        if (filters.statuses.length > 0) {
+          const mappedStatuses = filters.statuses.map(
+            (s) => STATUS_BACKEND_MAP[s] || s
+          );
+
+          params.append("validation", mappedStatuses[0]);
+        }
+
+        if (filters.date.from) {
+          params.append("date_from", filters.date.from.toISOString());
+        }
+
+        if (filters.date.to) {
+          params.append("date_to", filters.date.to.toISOString());
+        }
+
+        const url = `http://127.0.0.1:8000/api/records?${params.toString()}`;
+
+        console.log("🔥 URL FINAL:", url);
+
+        const res = await fetch(url, {
+          signal: controller.signal
+        });
+
+        const data = await res.json();
+
+        console.log("🔥 RESPONSE:", data);
+
+        setRecords(data.data);
+        setTotalCount(data.total);
+
+      } catch (err: any) {
+
+        if (err.name === "AbortError") return;
+
+        console.error('❌ Error cargando records:', err);
+
+        toast({
+          title: 'Error',
+          description: 'No se pudieron cargar los registros',
+          variant: 'destructive'
+        });
+
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timeout = setTimeout(fetchRecords, 400);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+
+  }, [filters]);
+
+  // ─────────────────────────────
+  // DATOS
+  // ─────────────────────────────
 
   const filteredRecords = useMemo(() => {
-    return records.filter(record => {
-      const matchesSearch =
-        record.camera_name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        record.location.toLowerCase().includes(filters.search.toLowerCase()) ||
-        record.id.toLowerCase().includes(filters.search.toLowerCase());
+    if (!USE_MOCK) return records;
+    return records;
+  }, [records]);
 
-      const matchesCrimeType = filters.crimeTypes.length === 0 || filters.crimeTypes.includes(record.crime_type);
-      const matchesStatus = filters.statuses.length === 0 || filters.statuses.includes(record.validation_status);
+  // ─────────────────────────────
+  // FILTROS
+  // ─────────────────────────────
 
-      let matchesDate = true;
-      if (filters.date.from) {
-        matchesDate = new Date(record.timestamp) >= filters.date.from;
-      }
-      if (filters.date.to && matchesDate) {
-        const endOfDay = new Date(filters.date.to);
-        endOfDay.setHours(23, 59, 59, 999);
-        matchesDate = new Date(record.timestamp) <= endOfDay;
-      }
+  const updateFilter = useCallback(
+    <K extends keyof RecordFilters>(
+      key: K,
+      value: RecordFilters[K]
+    ) => {
+      setFilters(prev => ({
+        ...prev,
+        [key]: value
+      }));
+    },
+    []
+  );
 
-      return matchesSearch && matchesCrimeType && matchesStatus && matchesDate;
-    });
-  }, [records, filters]);
-
-  const updateFilter = useCallback(<K extends keyof RecordFilters>(key: K, value: RecordFilters[K]) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }, []);
+  // ─────────────────────────────
+  // EXPORTAR TODO
+  // ─────────────────────────────
 
   const handleExportAll = useCallback(async () => {
-    if (USE_MOCK) {
-      exportRecordsToExcel(filteredRecords);
-      toast({ title: '📊 Exportación completada', description: `${filteredRecords.length} registros exportados a Excel` });
-      return;
-    }
+
     try {
+
       const params: Record<string, string> = {};
+
       if (filters.search) params.search = filters.search;
-      if (filters.crimeTypes.length) params.crime_type = filters.crimeTypes.join(',');
-      if (filters.statuses.length) params.validation = filters.statuses.join(',');
+
+      if (filters.crimeTypes.length) {
+        const mapped = filters.crimeTypes.map(
+          (t) => CRIME_TYPE_BACKEND_MAP[t] || t
+        );
+        params.crime_type = mapped[0];
+      }
+
+      if (filters.statuses.length) {
+        const mappedStatuses = filters.statuses.map(
+          (s) => STATUS_BACKEND_MAP[s] || s
+        );
+        params.validation = mappedStatuses[0];
+      }
+
       if (filters.date.from) params.date_from = filters.date.from.toISOString();
       if (filters.date.to) params.date_to = filters.date.to.toISOString();
-      
-      const blob = await apiClient.getBlob('/export/records/excel', params);
-      downloadBlob(blob, `registros_${Date.now()}.xlsx`);
-    } catch {
-      toast({ title: 'Error', description: 'No se pudo exportar', variant: 'destructive' });
-    }
-  }, [filteredRecords, filters, toast]);
 
-  const handleExportSingle = useCallback(async (record: HistoricalRecord) => {
-    if (USE_MOCK) {
-      exportSingleRecordToExcel(record);
-      toast({ title: '📊 Registro exportado', description: `${record.id} exportado a Excel` });
-      return;
-    }
-    try {
-      const blob = await apiClient.getBlob(`/export/records/${record.id}/zip`);
-      downloadBlob(blob, `registro_${record.id}.zip`);
+      const blob = await apiClient.getBlob(
+        '/export/records/excel',
+        params
+      );
+
+      downloadBlob(
+        blob,
+        `registros_${Date.now()}.xlsx`
+      );
+
     } catch {
-      toast({ title: 'Error', description: 'No se pudo exportar', variant: 'destructive' });
+
+      toast({
+        title: 'Error',
+        description: 'No se pudo exportar',
+        variant: 'destructive'
+      });
+
     }
-  }, [toast]);
+
+  }, [filters, toast]);
+
+  // ─────────────────────────────
+  // EXPORTAR UNO
+  // ─────────────────────────────
+
+  const handleExportSingle = useCallback(
+    async (record: HistoricalRecord) => {
+
+      try {
+
+        const blob = await apiClient.getBlob(
+          `/export/records/${record.id}/zip`
+        );
+
+        downloadBlob(
+          blob,
+          `registro_${record.id}.zip`
+        );
+
+      } catch {
+
+        toast({
+          title: 'Error',
+          description: 'No se pudo exportar',
+          variant: 'destructive'
+        });
+
+      }
+
+    },
+    [toast]
+  );
+
+  // ─────────────────────────────
+  // CLIP URL
+  // ─────────────────────────────
 
   const getClipUrl = useCallback((id: string) => {
-    if (USE_MOCK) return null;
-    return recordService.getClipUrl(id);
+    return `http://127.0.0.1:8000/api/records/${id}/clip`;
   }, []);
 
   return {
@@ -110,6 +279,7 @@ export function useRecords() {
     handleExportAll,
     handleExportSingle,
     getClipUrl,
-    totalCount: records.length,
+    totalCount,
+    loading,
   };
 }

@@ -109,7 +109,7 @@ export function ValidationModal({ alert, isOpen, onClose, onValidate, relatedAle
                 <Clock className="w-4 h-4 text-primary" />
                 <span className="text-muted-foreground">Hora:</span>
                 <span className="text-foreground font-mono">
-                  {format(alert.timestamp, 'HH:mm:ss', { locale: es })}
+                  {format(new Date(alert.timestamp), 'HH:mm:ss', { locale: es })}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm">

@@ -5,34 +5,46 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+
   server: {
-    host: "::",
-    port: 5173,  // Changed from 8080 to standard Vite port
+    host: "0.0.0.0",
+    port: 5173,
+    strictPort: true,
+
     proxy: {
-      // Proxy /api requests to backend
-      '/api': {
-        target: 'http://localhost',
+
+      // ✅ FASTAPI BACKEND
+      "/api": {
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
         secure: false,
       },
-      // Proxy WebSocket connections
-      '/ws': {
-        target: 'ws://localhost',
+
+      // ✅ WEBSOCKET
+      "/ws": {
+        target: "ws://127.0.0.1:8000",
         ws: true,
         changeOrigin: true,
       },
-      // Proxy HLS streams
-      '/hls': {
-        target: 'http://localhost:8888',
+
+      // ✅ HLS VIDEO STREAMS
+      "/hls": {
+        target: "http://127.0.0.1:8888",
         changeOrigin: true,
         secure: false,
       },
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+  ].filter(Boolean),
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
 }));

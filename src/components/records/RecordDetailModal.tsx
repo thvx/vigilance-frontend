@@ -17,6 +17,12 @@ interface RecordDetailModalProps {
 export function RecordDetailModal({ record, isOpen, onClose, onExport, clipUrl }: RecordDetailModalProps) {
   if (!record) return null;
 
+  // 🔥 FIX CLAVE: asegurar que siempre haya tipo visible
+  const crimeTypeLabel =
+    record?.crime_type
+      ? CRIME_TYPE_LABELS[record.crime_type] || record.crime_type
+      : '-';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[700px] bg-card border-border max-h-[90vh] overflow-y-auto">
@@ -59,9 +65,15 @@ export function RecordDetailModal({ record, isOpen, onClose, onExport, clipUrl }
             <DetailItem
               icon={Clock}
               label="Fecha/Hora"
-              value={format(record.timestamp, "dd/MM/yyyy HH:mm:ss", { locale: es })}
+              value={format(new Date(record.timestamp), "dd/MM/yyyy HH:mm:ss", { locale: es })}
             />
-            <DetailItem icon={FileText} label="Tipo" value={CRIME_TYPE_LABELS[record.crime_type]} />
+
+            {/* 🔥 FIX AQUÍ */}
+            <DetailItem
+              icon={FileText}
+              label="Tipo"
+              value={crimeTypeLabel}
+            />
           </div>
 
           {/* Metadata */}
@@ -127,7 +139,9 @@ function DetailItem({ icon: Icon, label, value }: { icon: React.ElementType; lab
     <div className="flex items-center gap-2 text-sm">
       <Icon className="w-4 h-4 text-primary flex-shrink-0" />
       <span className="text-muted-foreground">{label}:</span>
-      <span className="text-foreground font-medium truncate">{value}</span>
+      <span className="text-foreground font-medium truncate">
+        {value || '-'}
+      </span>
     </div>
   );
 }

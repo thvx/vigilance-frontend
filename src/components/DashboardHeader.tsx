@@ -1,83 +1,143 @@
-import { Shield, Wifi, Clock, Activity } from 'lucide-react';
-import { SystemMetrics } from '@/types/surveillance';
-import { useState, useEffect } from 'react';
+import {
+  Shield,
+  Wifi,
+  Activity,
+  LogOut,
+} from "lucide-react";
+
+import {
+  SystemMetrics,
+} from "@/types/surveillance";
+
+import {
+  useState,
+  useEffect,
+  memo,
+} from "react";
+
+import {
+  logout,
+  getUsername,
+} from "@/services/auth";
 
 interface DashboardHeaderProps {
   metrics: SystemMetrics;
 }
 
-export function DashboardHeader({ metrics }: DashboardHeaderProps) {
-  const [currentTime, setCurrentTime] = useState('');
-  const [currentDate, setCurrentDate] = useState('');
+function DashboardHeaderComponent({
+  metrics,
+}: DashboardHeaderProps) {
+
+  const [currentTime, setCurrentTime] =
+    useState("");
+
+  const [username, setUsername] =
+    useState("");
 
   useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(new Date().toLocaleTimeString('es-ES', {
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-      }));
-      setCurrentDate(new Date().toLocaleDateString('es-ES', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      }));
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+
+    setUsername(
+      getUsername()
+    );
+
+    const interval = setInterval(() => {
+
+      setCurrentTime(
+        new Date().toLocaleTimeString(
+          "es-ES"
+        )
+      );
+
+    }, 1000);
+
+    return () =>
+      clearInterval(interval);
+
   }, []);
 
   return (
-    <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="px-3 sm:px-6 py-3 sm:py-4">
-        <div className="flex items-center justify-between gap-3">
-          {/* Logo & Title */}
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg gradient-primary box-glow-primary flex-shrink-0">
-              <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
+
+    <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-50">
+
+      <div className="px-4 lg:px-6 py-4">
+
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
+          {/* LEFT */}
+          <div className="flex items-center gap-4">
+
+            <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-blue-600 shadow-lg">
+
+              <Shield className="w-6 h-6 text-white" />
+
             </div>
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-xl font-bold text-foreground truncate">
-                Centro de Vigilancia 
+
+            <div>
+
+              <h1 className="text-lg lg:text-xl font-bold">
+                Centro de Vigilancia
               </h1>
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-mono hidden sm:block">
-                Sistema de Detección de Actividades Criminales
+
+              <p className="text-xs text-muted-foreground">
+                Sistema Inteligente de Monitoreo
               </p>
+
             </div>
+
           </div>
 
-          {/* Status Indicators */}
-          <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 flex-shrink-0">
-            {/* Connection Status */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
-              <Wifi className="w-4 h-4 text-success" />
-              <span className="text-xs font-medium text-success">Esperando Conexión</span>
-            </div>
+          {/* RIGHT */}
+          <div className="flex flex-wrap items-center gap-3 lg:gap-5">
 
-            {/* Active Cameras */}
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-secondary border border-border">
-              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-              <span className="text-[10px] sm:text-xs font-mono text-foreground">
-                {metrics.online_cameras}/{metrics.total_cameras}
+            <div className="flex items-center gap-2">
+
+              <Wifi className="w-4 h-4 text-green-500" />
+
+              <span className="text-sm font-medium">
+                En línea
               </span>
+
             </div>
 
-            {/* Latency */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary border border-border">
-              <div className={`w-2 h-2 rounded-full ${metrics.avg_latency_ms < 2000 ? 'bg-success' : metrics.avg_latency_ms < 3000 ? 'bg-warning' : 'bg-destructive'}`} />
-              <span className="text-xs font-mono text-foreground">
-                {(metrics.avg_latency_ms / 1000).toFixed(1)}s
+            <div className="flex items-center gap-2">
+
+              <Activity className="w-4 h-4 text-blue-500" />
+
+              <span className="text-sm font-semibold">
+                {metrics.online_cameras}/
+                {metrics.total_cameras}
               </span>
+
             </div>
 
-            {/* Time */}
-            <div className="text-right hidden lg:block">
-              <div className="text-lg font-mono font-bold text-foreground">{currentTime}</div>
-              <div className="text-xs text-muted-foreground capitalize">{currentDate}</div>
+            <div className="text-sm font-mono bg-secondary px-3 py-1 rounded-lg">
+              {currentTime}
             </div>
-            <div className="lg:hidden text-right">
-              <div className="text-sm font-mono font-bold text-foreground">{currentTime}</div>
+
+            <div className="text-sm font-semibold bg-secondary px-3 py-1 rounded-lg">
+              👤 {username}
             </div>
+
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all duration-200 shadow-md"
+            >
+
+              <LogOut className="w-4 h-4" />
+
+              Salir
+
+            </button>
+
           </div>
+
         </div>
+
       </div>
+
     </header>
   );
 }
+
+export const DashboardHeader =
+  memo(DashboardHeaderComponent);

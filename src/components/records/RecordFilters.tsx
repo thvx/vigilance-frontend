@@ -122,7 +122,7 @@ export function RecordFilters({ filters, onFilterChange, onExport, resultCount }
           <DropdownMenuContent align="start" className="w-56">
             <div className="px-2 py-2 space-y-1">
               {[
-                { value: 'true_positive', label: 'Positivo Verdadero' },
+                { value: 'confirmed', label: 'Confirmado' },
                 { value: 'false_positive', label: 'Falso Positivo' },
                 { value: 'pending', label: 'Pendiente' },
               ].map(({ value, label }) => (
