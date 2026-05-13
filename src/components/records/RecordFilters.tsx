@@ -16,11 +16,11 @@ import type { RecordFilters as RecordFiltersType, DateFilter } from '@/hooks/use
 interface RecordFiltersProps {
   filters: RecordFiltersType;
   onFilterChange: <K extends keyof RecordFiltersType>(key: K, value: RecordFiltersType[K]) => void;
-  onExport: () => void;
+  onOpenExportModal: () => void;
   resultCount: number;
 }
 
-export function RecordFilters({ filters, onFilterChange, onExport, resultCount }: RecordFiltersProps) {
+export function RecordFilters({ filters, onFilterChange, onOpenExportModal, resultCount }: RecordFiltersProps) {
   const toggleCrimeType = (type: string) => {
     const newTypes = filters.crimeTypes.includes(type)
       ? filters.crimeTypes.filter(t => t !== type)
@@ -159,9 +159,9 @@ export function RecordFilters({ filters, onFilterChange, onExport, resultCount }
         />
 
         {/* Export Button */}
-        <Button variant="outline" className="border-border w-full sm:w-auto" onClick={onExport}>
+        <Button variant="outline" className="border-border w-full sm:w-auto" onClick={onOpenExportModal}>
           <Download className="w-4 h-4 mr-2" />
-          Exportar Todo
+          Exportar
         </Button>
 
         {/* Clear All Filters */}

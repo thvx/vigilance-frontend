@@ -1,16 +1,17 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 
 import { Search } from "lucide-react";
 
 import { useRecords } from "@/hooks/useRecords";
 
 import { RecordFilters } from "@/components/records/RecordFilters";
-
 import { RecordTable } from "@/components/records/RecordTable";
-
 import { RecordDetailModal } from "@/components/records/RecordDetailModal";
+import { ExportModal } from "@/components/records/ExportModal";
 
 function RecordsSearchComponent() {
+
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const {
     records,
@@ -19,6 +20,7 @@ function RecordsSearchComponent() {
     selectedRecord,
     setSelectedRecord,
     handleExportAll,
+    handleExportCSV,
     handleExportSingle,
     getClipUrl,
     totalCount,
@@ -55,7 +57,7 @@ function RecordsSearchComponent() {
       <RecordFilters
         filters={filters}
         onFilterChange={updateFilter}
-        onExport={handleExportAll}
+        onOpenExportModal={() => setIsExportModalOpen(true)}
         resultCount={records.length}
       />
 
@@ -66,7 +68,7 @@ function RecordsSearchComponent() {
         onExportSingle={handleExportSingle}
       />
 
-      {/* MODAL */}
+      {/* DETAIL MODAL */}
       <RecordDetailModal
         record={selectedRecord}
         isOpen={!!selectedRecord}
@@ -77,6 +79,16 @@ function RecordsSearchComponent() {
             ? getClipUrl(selectedRecord.id)
             : null
         }
+      />
+
+      {/* EXPORT MODAL */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        records={records}
+        filters={filters}
+        onExportExcel={handleExportAll}
+        onExportCSV={handleExportCSV}
       />
 
     </div>

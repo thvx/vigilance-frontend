@@ -6,7 +6,7 @@ import {
 } from 'react';
 
 import { HistoricalRecord } from '@/types/surveillance';
-import { exportRecordsToExcel, exportSingleRecordToExcel } from '@/services/exportService';
+import { exportRecordsToExcel, exportRecordsToCSV, exportSingleRecordToExcel } from '@/services/exportService';
 import { apiClient } from '@/services/api';
 import { downloadBlob } from '@/services/exportService';
 import { useToast } from '@/hooks/use-toast';
@@ -231,6 +231,14 @@ export function useRecords() {
   }, [filters, toast]);
 
   // ─────────────────────────────
+  // EXPORTAR CSV (cliente)
+  // ─────────────────────────────
+
+  const handleExportCSV = useCallback(() => {
+    exportRecordsToCSV(records);
+  }, [records]);
+
+  // ─────────────────────────────
   // EXPORTAR UNO
   // ─────────────────────────────
 
@@ -277,6 +285,7 @@ export function useRecords() {
     selectedRecord,
     setSelectedRecord,
     handleExportAll,
+    handleExportCSV,
     handleExportSingle,
     getClipUrl,
     totalCount,
